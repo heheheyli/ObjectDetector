@@ -60,6 +60,7 @@ CObjectDetectorDlg::CObjectDetectorDlg(CWnd* pParent /*=nullptr*/)
 void CObjectDetectorDlg::DoDataExchange(CDataExchange* pDX)
 {
 	CDialogEx::DoDataExchange(pDX);
+	DDX_Control(pDX, IDC_DETECT_BUTTON, m_btnDetect);
 }
 
 BEGIN_MESSAGE_MAP(CObjectDetectorDlg, CDialogEx)
@@ -69,6 +70,7 @@ BEGIN_MESSAGE_MAP(CObjectDetectorDlg, CDialogEx)
 	ON_BN_CLICKED(IDC_LOAD_BUTTON, &CObjectDetectorDlg::OnBnClickedLoadButton)
 	ON_BN_CLICKED(IDC_DETECT_BUTTON, &CObjectDetectorDlg::OnBnClickedDetectButton)
 	ON_BN_CLICKED(IDC_SAVE_BUTTON, &CObjectDetectorDlg::OnBnClickedSaveButton)
+	ON_WM_CTLCOLOR()
 END_MESSAGE_MAP()
 
 
@@ -104,7 +106,7 @@ BOOL CObjectDetectorDlg::OnInitDialog()
 	SetIcon(m_hIcon, FALSE);		// Set small icon
 
 	// TODO: Add extra initialization here
-	cv::Mat test = cv::Mat::zeros(100, 100, CV_8UC3);
+	m_bgBrush.CreateSolidBrush(RGB(255, 228, 235));
 
 	return TRUE;  // return TRUE  unless you set the focus to a control
 }
@@ -309,25 +311,42 @@ void CObjectDetectorDlg::OnBnClickedDetectButton()
 	std::vector<int> indices;
 	cv::dnn::NMSBoxes(boxes, confidences, CONF_THRESHOLD, NMS_THRESHOLD, indices);
 
-	// 6. Draw surviving boxes + labels
+	// 6. Draw surviving boxes + labels (translucent fill + clean labels)
+	const cv::Scalar BOX_COLOR(80, 200, 120);   // BGR — softer green
+	const cv::Scalar TEXT_COLOR(255, 255, 255);
+
 	for (int idx : indices) {
-		cv::Rect box = boxes[idx];
-		cv::rectangle(image, box, cv::Scalar(0, 255, 0), 2);
+		cv::Rect box = boxes[idx] & cv::Rect(0, 0, image.cols, image.rows); // clip to image
+		if (box.empty()) continue;
 
-		double fontScale = std::max(0.5, image.cols / 1200.0);
+		// translucent fill inside the box
+		cv::Mat roi = image(box);
+		cv::Mat overlay(roi.size(), roi.type(), BOX_COLOR);
+		cv::addWeighted(overlay, 0.20, roi, 0.80, 0, roi);
+
+		// crisp border
+		cv::rectangle(image, box, BOX_COLOR, 2, cv::LINE_AA);
+
+		// label chip
+		double fontScale = std::max(0.5, image.cols / 1400.0);
 		int thickness = std::max(1, (int)(fontScale * 2));
-
 		std::string label = m_classNames[classIds[idx]] +
 			" " + cv::format("%.2f", confidences[idx]);
+
 		int baseline = 0;
-		cv::Size textSize = cv::getTextSize(label, cv::FONT_HERSHEY_SIMPLEX, fontScale, thickness, &baseline);
-		int ty = std::max(box.y, textSize.height + 5);
+		cv::Size ts = cv::getTextSize(label, cv::FONT_HERSHEY_DUPLEX, fontScale, thickness, &baseline);
+		int padX = 8, padY = 5;
+		int chipW = ts.width + padX * 2;
+		int chipH = ts.height + padY * 2;
+		int chipX = box.x;
+		int chipY = (box.y - chipH >= 0) ? box.y - chipH : box.y; // above box, or inside if no room
+
 		cv::rectangle(image,
-			cv::Point(box.x, ty - textSize.height - 5),
-			cv::Point(box.x + textSize.width, ty + baseline - 5),
-			cv::Scalar(0, 255, 0), cv::FILLED);
-		cv::putText(image, label, cv::Point(box.x, ty - 5),
-			cv::FONT_HERSHEY_SIMPLEX, fontScale, cv::Scalar(0, 0, 0), thickness);
+			cv::Rect(chipX, chipY, chipW, chipH),
+			BOX_COLOR, cv::FILLED, cv::LINE_AA);
+		cv::putText(image, label,
+			cv::Point(chipX + padX, chipY + padY + ts.height - 2),
+			cv::FONT_HERSHEY_DUPLEX, fontScale, TEXT_COLOR, thickness, cv::LINE_AA);
 	}
 
 	// 7. Store annotated result + display it
@@ -418,4 +437,17 @@ void CObjectDetectorDlg::OnBnClickedSaveButton()
 		AfxMessageBox(_T("Image saved successfully."));
 	else
 		AfxMessageBox(_T("Failed to save image."));
+}
+
+HBRUSH CObjectDetectorDlg::OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor)
+{
+	HBRUSH hbr = CDialogEx::OnCtlColor(pDC, pWnd, nCtlColor);
+
+	if (nCtlColor == CTLCOLOR_DLG || nCtlColor == CTLCOLOR_STATIC)
+	{
+		pDC->SetBkColor(RGB(255, 228, 235));   // matches labels to the bg
+		pDC->SetBkMode(TRANSPARENT);
+		return m_bgBrush;                       // CBrush → HBRUSH implicitly
+	}
+	return hbr;
 }

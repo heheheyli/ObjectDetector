@@ -10,7 +10,7 @@
 #define IDC_IMAGE                       1000
 #define IDC_LOAD_BUTTON                 1001
 #define IDC_DETECT_BUTTON               1002
-#define IDC_LOAD_BUTTON2                1003
+#define IDC_LOAD_BUTTON2                1004
 #define IDC_SAVE_BUTTON                 1005
 
 // Next default values for new objects

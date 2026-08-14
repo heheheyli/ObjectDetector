@@ -29,6 +29,7 @@ protected:
 	cv::dnn::Net m_net;
 	std::vector<std::string> m_classNames;
 	bool m_modelLoaded = false;
+	CBrush m_bgBrush;
 
 	bool LoadModel();
 
@@ -42,4 +43,6 @@ public:
 	afx_msg void OnBnClickedLoadButton();
 	afx_msg void OnBnClickedDetectButton();
 	afx_msg void OnBnClickedSaveButton();
+	afx_msg HBRUSH OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor);
+	CButton m_btnDetect;
 };
