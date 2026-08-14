@@ -1,0 +1,9 @@
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <Fragment>
+	  <ComponentGroup Id="AppFiles" Directory="INSTALLFOLDER">
+		  <Files Include="..\x64\Release\**">
+			  <Exclude Files="..\x64\Release\**\*.pdb" />
+		  </Files>
+	  </ComponentGroup>
+  </Fragment>
+</Wix>
