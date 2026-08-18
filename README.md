@@ -30,4 +30,5 @@ Download the latest `ObjectDetectorSetup.msi` from the [Releases](https://github
 ## Project
 
 Developed for Swinburne Unit SWE40006 – Software Deployment and Evolution.
+
 Author: Hayley Nguyen - 105005495@student.swin.edu.au
